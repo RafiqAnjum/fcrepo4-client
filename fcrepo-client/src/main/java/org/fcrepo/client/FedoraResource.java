@@ -15,6 +15,7 @@
  */
 package org.fcrepo.client;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Date;
@@ -39,6 +40,12 @@ public interface FedoraResource {
      * Remove this Resource.
     **/
     public void delete() throws FedoraException;
+    
+    /**
+     * Remove this Resource.
+     * @param deleteTombstone a boolean switch to choose if also the node tombstone must be deleted
+    **/
+    public void delete(boolean deleteTombstone) throws FedoraException;
 
     /**
      * Get the creation date of this Resource.
@@ -83,8 +90,9 @@ public interface FedoraResource {
     /**
      * Move this Resource to a new path.
      * @param destination The path of the new copy.
+     * @throws IOException 
     **/
-    public void move( String destination ) throws FedoraException;
+    public void move( String destination ) throws FedoraException, IOException;
 
     /**
      * Update the properties of this Resource using SPARQL Update.

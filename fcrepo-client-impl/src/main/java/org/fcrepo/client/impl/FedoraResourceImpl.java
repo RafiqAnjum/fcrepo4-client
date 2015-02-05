@@ -15,13 +15,15 @@
  */
 package org.fcrepo.client.impl;
 
+import static org.apache.http.HttpStatus.SC_BAD_GATEWAY;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_FORBIDDEN;
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_NOT_FOUND;
-
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.apache.http.HttpStatus.SC_PRECONDITION_FAILED;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -31,22 +33,21 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.jena.atlas.lib.NotImplemented;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPut;
-
+import org.apache.jena.atlas.lib.NotImplemented;
 import org.fcrepo.client.FedoraException;
 import org.fcrepo.client.FedoraRepository;
 import org.fcrepo.client.FedoraResource;
 import org.fcrepo.client.ForbiddenException;
 import org.fcrepo.client.NotFoundException;
 import org.fcrepo.client.ReadOnlyException;
+import org.fcrepo.client.http.utils.HttpMove;
 import org.fcrepo.client.utils.HttpHelper;
 import org.fcrepo.kernel.RdfLexicon;
-
 import org.slf4j.Logger;
 
 import com.hp.hpl.jena.graph.Graph;
@@ -101,9 +102,52 @@ public class FedoraResourceImpl implements FedoraResource {
     }
 
     @Override
-    public void delete() throws ReadOnlyException {
-        // TODO Auto-generated method stub
-        throw new NotImplemented("Method delete() is not implemented.");
+    public void delete() throws FedoraException {
+        delete(true);
+    }
+
+    @Override
+    public void delete(boolean deleteTombstone) throws FedoraException {
+        final HttpDelete delete = httpHelper.createDeleteMethod(path);
+        final String uri = delete.getURI().toString();
+        
+        try {
+            HttpResponse response = httpHelper.execute(delete);
+            final StatusLine status = response.getStatusLine();
+            if ( status.getStatusCode() > 400 ) {
+                switch(status.getStatusCode()) {
+                case SC_NOT_FOUND:
+                    throw new NotFoundException("Resource does not exist: " + path);
+                default:
+                    throw new FedoraException("Resource can't be deleted: " + path);
+                }
+            }
+            
+            if (deleteTombstone) {
+                final HttpDelete deleteTombstoneReq = httpHelper.createDeleteMethod(path + "/fcr:tombstone");
+                try {
+                response = httpHelper.execute(deleteTombstoneReq);
+                    if ( status.getStatusCode() > 400 ) {
+                        switch(status.getStatusCode()) {
+                        case SC_NOT_FOUND:
+                            throw new NotFoundException("Resource tombstone does not exist: " + path);
+                        default:
+                            throw new FedoraException("Resource tombstone can't be deleted: " + path);
+                        }
+                    }
+                } finally {
+                    deleteTombstoneReq.releaseConnection();
+                }
+            }
+
+        } catch (final FedoraException e) {
+            throw e;
+        } catch (final Exception e) {
+            LOGGER.error("could not delete resource " + uri, e);
+            throw new FedoraException(e);
+        } finally {
+            delete.releaseConnection();
+        }
     }
 
     @Override
@@ -158,9 +202,42 @@ public class FedoraResourceImpl implements FedoraResource {
     }
 
     @Override
-    public void move(final String destination) throws ReadOnlyException {
-        // TODO Auto-generated method stub
-        throw new NotImplemented("Method move(final String destination) is not implemented.");
+    public void move(final String destination) throws FedoraException, IOException {
+        String repoUrl = this.repository.getRepositoryUrl();
+        
+        
+        final HttpMove move = httpHelper.createMoveMethod(path, repoUrl+"/"+destination);
+        final String uri = move.getURI().toString();
+        try {
+            final HttpResponse response = httpHelper.execute( move );
+            final StatusLine status = response.getStatusLine();
+            LOGGER.debug("Status of the move request {}", status);
+            LOGGER.debug("Uri of the move request {}", uri);
+            
+            if(status.getStatusCode() > 400) {
+                switch(status.getStatusCode()) {
+                case SC_CONFLICT:
+                    throw new NotFoundException("Resource does not exist: " + path);
+                case SC_PRECONDITION_FAILED:
+                    throw new FedoraException("Destination path already exists: " + destination);
+                case SC_BAD_GATEWAY:
+                    throw new FedoraException("Destination URI isn't a valid resource path: " + destination);
+                default:
+                    throw new FedoraException("Resource can't be deleted: " + uri);
+                }                
+            }
+            if ( status.getStatusCode() == SC_CONFLICT ) {
+                throw new FedoraException("resource cannot be moved: " + uri);
+            }
+            
+        } catch (final FedoraException | IOException e) {
+            throw e;
+        } catch (final Exception e) {
+            LOGGER.error("could not move resource " + uri, e);
+            throw new FedoraException(e);
+        } finally {
+            move.releaseConnection();
+        }
     }
 
     @Override

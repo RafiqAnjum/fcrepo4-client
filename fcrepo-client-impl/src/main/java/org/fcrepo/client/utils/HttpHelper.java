@@ -16,15 +16,12 @@
 package org.fcrepo.client.utils;
 
 import static java.lang.Integer.MAX_VALUE;
-
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
 import static org.apache.http.HttpStatus.SC_FORBIDDEN;
 import static org.apache.http.HttpStatus.SC_NOT_FOUND;
 import static org.apache.http.HttpStatus.SC_OK;
-
 import static org.apache.jena.riot.WebContent.contentTypeSPARQLUpdate;
-
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
@@ -36,12 +33,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.fcrepo.client.BadRequestException;
-import org.fcrepo.client.ForbiddenException;
-import org.fcrepo.client.NotFoundException;
-
-import com.hp.hpl.jena.graph.Node;
-
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -50,6 +41,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPatch;
@@ -63,20 +55,23 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
-
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotReader;
 import org.apache.jena.riot.lang.CollectorStreamTriples;
-
+import org.fcrepo.client.BadRequestException;
 import org.fcrepo.client.FedoraContent;
 import org.fcrepo.client.FedoraDatastream;
 import org.fcrepo.client.FedoraException;
 import org.fcrepo.client.FedoraObject;
+import org.fcrepo.client.ForbiddenException;
+import org.fcrepo.client.NotFoundException;
 import org.fcrepo.client.ReadOnlyException;
+import org.fcrepo.client.http.utils.HttpMove;
 import org.fcrepo.client.impl.FedoraResourceImpl;
-
 import org.slf4j.Logger;
+
+import com.hp.hpl.jena.graph.Node;
 
 
 /**
@@ -196,6 +191,13 @@ public class HttpHelper {
     public HttpGet createGetMethod(final String path, final Map<String, List<String>> params) {
         return new HttpGet(repositoryURL + path + queryString(params));
     }
+    
+    public HttpMove createMoveMethod(final String path, final String destination) {
+        HttpMove httpMove =  new HttpMove(repositoryURL + path);
+        httpMove.addHeader("Destination", destination);
+        return httpMove;
+    }
+
 
     /**
      * Create a request to update triples with SPARQL Update.
@@ -231,6 +233,10 @@ public class HttpHelper {
     **/
     public HttpPut createPutMethod(final String path, final Map<String, List<String>> params) {
         return new HttpPut(repositoryURL + path + queryString(params));
+    }
+    
+    public HttpDelete createDeleteMethod(final String path) {
+        return new HttpDelete(repositoryURL + path);
     }
 
     /**
