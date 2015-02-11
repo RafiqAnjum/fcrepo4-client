@@ -113,4 +113,10 @@ public interface FedoraResource {
      * Check whether this Resource is writable.
     **/
     public boolean isWritable();
+    
+    /**
+     * Get the full path of the Resource, relative to the repository root.
+    **/
+    public String getParentUid() throws FedoraException;
+    
 }

@@ -399,4 +399,13 @@ public class FedoraResourceImpl implements FedoraResource {
         }
     }
 
+    @Override
+    public String getParentUid() throws FedoraException {
+      int afterIndex = this.path.lastIndexOf('/') - 12;
+      int beforIndex = this.path.lastIndexOf(0, afterIndex - 1);
+      
+      return this.path.substring(beforIndex + 1, afterIndex);
+      
+    }
+
 }
