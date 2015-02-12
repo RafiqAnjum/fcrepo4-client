@@ -38,13 +38,12 @@ import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.jena.atlas.lib.NotImplemented;
 import org.fcrepo.client.FedoraException;
 import org.fcrepo.client.FedoraRepository;
 import org.fcrepo.client.FedoraResource;
 import org.fcrepo.client.ForbiddenException;
 import org.fcrepo.client.NotFoundException;
-import org.fcrepo.client.ReadOnlyException;
+import org.fcrepo.client.http.utils.HttpCopy;
 import org.fcrepo.client.http.utils.HttpMove;
 import org.fcrepo.client.utils.HttpHelper;
 import org.fcrepo.kernel.RdfLexicon;
@@ -84,9 +83,12 @@ public class FedoraResourceImpl implements FedoraResource {
     /**
      * FedoraResourceImpl constructor
      *
-     * @param repository FedoraRepositoryImpl that created this resource
-     * @param httpHelper HTTP helper for making repository requests
-     * @param path Repository path of this resource
+     * @param repository
+     *            FedoraRepositoryImpl that created this resource
+     * @param httpHelper
+     *            HTTP helper for making repository requests
+     * @param path
+     *            Repository path of this resource
      */
     public FedoraResourceImpl(final FedoraRepository repository, final HttpHelper httpHelper, final String path) {
         this.repository = repository;
@@ -96,9 +98,45 @@ public class FedoraResourceImpl implements FedoraResource {
     }
 
     @Override
-    public void copy(final String destination) throws ReadOnlyException {
-        // TODO Auto-generated method stub
-        throw new NotImplemented("Method copy(final String destination) is not implemented.");
+    // public void copy(final String destination) throws ReadOnlyException {
+    // // TODO Auto-generated method stub
+    // throw new
+    // NotImplemented("Method copy(final String destination) is not implemented.");
+    // }
+    public
+    void copy(final String destination) throws FedoraException {
+        String repoUrl = this.repository.getRepositoryUrl();
+
+        final HttpCopy copy = httpHelper.createCopyMethod(path, repoUrl + "/" + destination);
+        final String uri = copy.getURI().toString();
+        try {
+            final HttpResponse response = httpHelper.execute(copy);
+            final StatusLine status = response.getStatusLine();
+            LOGGER.debug("Status of the copy request {}", status);
+            LOGGER.debug("Uri of the copy request {}", uri);
+
+            if (status.getStatusCode() > 400) {
+                switch (status.getStatusCode()) {
+                case SC_CONFLICT:
+                    throw new NotFoundException("Resource does not exist: " + path);
+                case SC_PRECONDITION_FAILED:
+                    throw new FedoraException("Destination path already exists: " + destination);
+                case SC_BAD_GATEWAY:
+                    throw new FedoraException("Destination URI isn't a valid resource path: " + destination);
+                default:
+                    throw new FedoraException("Resource can't be deleted: " + uri);
+                }
+            }
+            if (status.getStatusCode() == SC_CONFLICT) {
+                throw new FedoraException("resource cannot be moved: " + uri);
+            }
+
+        } catch (final Exception e) {
+            LOGGER.error("could not move resource " + uri, e);
+            throw new FedoraException(e);
+        } finally {
+            copy.releaseConnection();
+        }
     }
 
     @Override
@@ -110,25 +148,25 @@ public class FedoraResourceImpl implements FedoraResource {
     public void delete(boolean deleteTombstone) throws FedoraException {
         final HttpDelete delete = httpHelper.createDeleteMethod(path);
         final String uri = delete.getURI().toString();
-        
+
         try {
             HttpResponse response = httpHelper.execute(delete);
             final StatusLine status = response.getStatusLine();
-            if ( status.getStatusCode() > 400 ) {
-                switch(status.getStatusCode()) {
+            if (status.getStatusCode() > 400) {
+                switch (status.getStatusCode()) {
                 case SC_NOT_FOUND:
                     throw new NotFoundException("Resource does not exist: " + path);
                 default:
                     throw new FedoraException("Resource can't be deleted: " + path);
                 }
             }
-            
+
             if (deleteTombstone) {
                 final HttpDelete deleteTombstoneReq = httpHelper.createDeleteMethod(path + "/fcr:tombstone");
                 try {
-                response = httpHelper.execute(deleteTombstoneReq);
-                    if ( status.getStatusCode() > 400 ) {
-                        switch(status.getStatusCode()) {
+                    response = httpHelper.execute(deleteTombstoneReq);
+                    if (status.getStatusCode() > 400) {
+                        switch (status.getStatusCode()) {
                         case SC_NOT_FOUND:
                             throw new NotFoundException("Resource tombstone does not exist: " + path);
                         default:
@@ -204,18 +242,17 @@ public class FedoraResourceImpl implements FedoraResource {
     @Override
     public void move(final String destination) throws FedoraException, IOException {
         String repoUrl = this.repository.getRepositoryUrl();
-        
-        
-        final HttpMove move = httpHelper.createMoveMethod(path, repoUrl+"/"+destination);
+
+        final HttpMove move = httpHelper.createMoveMethod(path, repoUrl + "/" + destination);
         final String uri = move.getURI().toString();
         try {
-            final HttpResponse response = httpHelper.execute( move );
+            final HttpResponse response = httpHelper.execute(move);
             final StatusLine status = response.getStatusLine();
             LOGGER.debug("Status of the move request {}", status);
             LOGGER.debug("Uri of the move request {}", uri);
-            
-            if(status.getStatusCode() > 400) {
-                switch(status.getStatusCode()) {
+
+            if (status.getStatusCode() > 400) {
+                switch (status.getStatusCode()) {
                 case SC_CONFLICT:
                     throw new NotFoundException("Resource does not exist: " + path);
                 case SC_PRECONDITION_FAILED:
@@ -224,12 +261,12 @@ public class FedoraResourceImpl implements FedoraResource {
                     throw new FedoraException("Destination URI isn't a valid resource path: " + destination);
                 default:
                     throw new FedoraException("Resource can't be deleted: " + uri);
-                }                
+                }
             }
-            if ( status.getStatusCode() == SC_CONFLICT ) {
+            if (status.getStatusCode() == SC_CONFLICT) {
                 throw new FedoraException("resource cannot be moved: " + uri);
             }
-            
+
         } catch (final FedoraException | IOException e) {
             throw e;
         } catch (final Exception e) {
@@ -245,24 +282,24 @@ public class FedoraResourceImpl implements FedoraResource {
         final HttpPatch patch = httpHelper.createPatchMethod(path, sparqlUpdate);
 
         try {
-            final HttpResponse response = httpHelper.execute( patch );
+            final HttpResponse response = httpHelper.execute(patch);
             final StatusLine status = response.getStatusLine();
             final String uri = patch.getURI().toString();
 
-            if ( status.getStatusCode() == SC_NO_CONTENT) {
+            if (status.getStatusCode() == SC_NO_CONTENT) {
                 LOGGER.debug("triples updated successfully for resource {}", uri);
-            } else if ( status.getStatusCode() == SC_FORBIDDEN) {
+            } else if (status.getStatusCode() == SC_FORBIDDEN) {
                 LOGGER.error("updating resource {} is not authorized.", uri);
                 throw new ForbiddenException("updating resource " + uri + " is not authorized.");
-            } else if ( status.getStatusCode() == SC_NOT_FOUND) {
+            } else if (status.getStatusCode() == SC_NOT_FOUND) {
                 LOGGER.error("resource {} does not exist, cannot update", uri);
                 throw new NotFoundException("resource " + uri + " does not exist, cannot update");
-            } else if ( status.getStatusCode() == SC_CONFLICT) {
+            } else if (status.getStatusCode() == SC_CONFLICT) {
                 LOGGER.error("resource {} is locked", uri);
                 throw new FedoraException("resource is locked: " + uri);
             } else {
                 LOGGER.error("error updating resource {}: {} {}", uri, status.getStatusCode(),
-                             status.getReasonPhrase());
+                status.getReasonPhrase());
                 throw new FedoraException("error retrieving resource " + uri + ": " + status.getStatusCode() + " " +
                                           status.getReasonPhrase());
             }
@@ -282,29 +319,29 @@ public class FedoraResourceImpl implements FedoraResource {
 
     @Override
     public void updateProperties(final InputStream updatedProperties, final String contentType)
-            throws FedoraException {
+    throws FedoraException {
 
         final HttpPut put = httpHelper.createTriplesPutMethod(path, updatedProperties, contentType);
 
         try {
-            final HttpResponse response = httpHelper.execute( put );
+            final HttpResponse response = httpHelper.execute(put);
             final StatusLine status = response.getStatusLine();
             final String uri = put.getURI().toString();
 
-            if ( status.getStatusCode() == SC_NO_CONTENT) {
+            if (status.getStatusCode() == SC_NO_CONTENT) {
                 LOGGER.debug("triples updated successfully for resource {}", uri);
-            } else if ( status.getStatusCode() == SC_FORBIDDEN) {
+            } else if (status.getStatusCode() == SC_FORBIDDEN) {
                 LOGGER.error("updating resource {} is not authorized.", uri);
                 throw new ForbiddenException("updating resource " + uri + " is not authorized.");
-            } else if ( status.getStatusCode() == SC_NOT_FOUND) {
+            } else if (status.getStatusCode() == SC_NOT_FOUND) {
                 LOGGER.error("resource {} does not exist, cannot update", uri);
                 throw new NotFoundException("resource " + uri + " does not exist, cannot update");
-            } else if ( status.getStatusCode() == SC_CONFLICT) {
+            } else if (status.getStatusCode() == SC_CONFLICT) {
                 LOGGER.error("resource {} is locked", uri);
                 throw new FedoraException("resource is locked: " + uri);
             } else {
                 LOGGER.error("error updating resource {}: {} {}", uri, status.getStatusCode(),
-                             status.getReasonPhrase());
+                status.getReasonPhrase());
                 throw new FedoraException("error retrieving resource " + uri + ": " + status.getStatusCode() + " " +
                                           status.getReasonPhrase());
             }
@@ -343,15 +380,15 @@ public class FedoraResourceImpl implements FedoraResource {
 
     /**
      * Update the properties graph
-    **/
-    public void setGraph( final Graph graph ) {
+     **/
+    public void setGraph(final Graph graph) {
         this.graph = graph;
     }
 
     private Date getDate(final Property property) {
         Date date = null;
         final Triple t = getTriple(subject, property);
-        if ( t != null ) {
+        if (t != null) {
             final String dateValue = t.getObject().getLiteralValue().toString();
             try {
                 date = dateFormat.parse(dateValue);
@@ -365,13 +402,14 @@ public class FedoraResourceImpl implements FedoraResource {
     /**
      * Return all the values of a property
      *
-     * @param property The Property to get values for
+     * @param property
+     *            The Property to get values for
      * @return Collection of values
      */
     protected Collection<String> getPropertyValues(final Property property) {
         final ExtendedIterator<Triple> iterator = graph.find(Node.ANY,
-                                                             property.asNode(),
-                                                             Node.ANY);
+        property.asNode(),
+        Node.ANY);
         final Set<String> set = new HashSet<>();
         while (iterator.hasNext()) {
             final Node object = iterator.next().getObject();
@@ -386,10 +424,10 @@ public class FedoraResourceImpl implements FedoraResource {
         return set;
     }
 
-    protected Triple getTriple( final Node subject, final Property property ) {
-        final ExtendedIterator<Triple> it = graph.find( subject, property.asNode(), null );
+    protected Triple getTriple(final Node subject, final Property property) {
+        final ExtendedIterator<Triple> it = graph.find(subject, property.asNode(), null);
         try {
-            if ( it.hasNext() ) {
+            if (it.hasNext()) {
                 return it.next();
             } else {
                 return null;
@@ -399,4 +437,4 @@ public class FedoraResourceImpl implements FedoraResource {
         }
     }
 
-}
+} 
