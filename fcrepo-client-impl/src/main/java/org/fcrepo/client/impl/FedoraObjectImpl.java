@@ -20,6 +20,7 @@ import static org.fcrepo.kernel.RdfLexicon.HAS_MIXIN_TYPE;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import com.hp.hpl.jena.graph.Node;
@@ -41,7 +42,7 @@ import org.fcrepo.client.utils.HttpHelper;
  * @since 2014-08-11
  */
 public class FedoraObjectImpl extends FedoraResourceImpl implements FedoraObject {
-    private final static Node binaryType = NodeFactory.createLiteral("fedora:binary");
+    private final static Node binaryType = NodeFactory.createLiteral("fedora:Binary");
 
     /**
      * Constructor for FedoraObjectImpl
