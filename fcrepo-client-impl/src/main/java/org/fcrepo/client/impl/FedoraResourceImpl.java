@@ -399,14 +399,8 @@ public class FedoraResourceImpl implements FedoraResource {
         return date;
     }
 
-    /**
-     * Return all the values of a property
-     *
-     * @param property
-     *            The Property to get values for
-     * @return Collection of values
-     */
-    protected Collection<String> getPropertyValues(final Property property) {
+    @Override
+    public Collection<String> getPropertyValues(final Property property) {
         final ExtendedIterator<Triple> iterator = graph.find(Node.ANY,
         property.asNode(),
         Node.ANY);

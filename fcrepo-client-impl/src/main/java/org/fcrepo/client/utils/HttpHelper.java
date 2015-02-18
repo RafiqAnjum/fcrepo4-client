@@ -24,6 +24,8 @@ import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.jena.riot.WebContent.contentTypeSPARQLUpdate;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -33,6 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -304,9 +307,19 @@ public class HttpHelper {
      * @return the updated resource
     **/
     public FedoraResourceImpl loadProperties( final FedoraResourceImpl resource ) throws FedoraException {
+    	return loadProperties(resource, true);
+    }
+    
+    /**
+     * Retrieve RDF from the repository and update the properties of a resource
+     * @param resource The resource to update
+     * @param includeChilds A boolean switch to enable the loading of triples of child nodes.
+     * @return the updated resource
+    **/
+    public FedoraResourceImpl loadProperties( final FedoraResourceImpl resource, boolean includeChilds ) throws FedoraException {
         final String path = resource.getPath() + (resource instanceof FedoraDatastream ? "/fcr:metadata" : "");
         final HttpGet get = createGetMethod(path, null);
-        if (resource instanceof FedoraObject) {
+        if (includeChilds && (resource instanceof FedoraObject)) {
             get.addHeader("Prefer", "return=representation; "
                 + "include=\"http://fedora.info/definitions/v4/repository#EmbedResources\"");
         }

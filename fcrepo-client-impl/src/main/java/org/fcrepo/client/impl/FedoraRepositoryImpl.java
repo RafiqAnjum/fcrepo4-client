@@ -130,7 +130,12 @@ public class FedoraRepositoryImpl implements FedoraRepository {
 
     @Override
     public FedoraObject getObject(final String path) throws FedoraException {
-        return (FedoraObject)httpHelper.loadProperties(new FedoraObjectImpl(this, httpHelper, path));
+        return getObject(path, true);
+    }
+
+    @Override
+    public FedoraObject getObject(String path, boolean includeChilds) throws FedoraException {
+        return (FedoraObject)httpHelper.loadProperties(new FedoraObjectImpl(this, httpHelper, path), includeChilds);
     }
 
     @Override

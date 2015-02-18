@@ -21,7 +21,9 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 
+import com.hp.hpl.jena.graph.Node;
 import com.hp.hpl.jena.graph.Triple;
+import com.hp.hpl.jena.rdf.model.Property;
 
 /**
  * Superclass of Fedora Objects and Datastreams containing common functionality.
@@ -81,6 +83,15 @@ public interface FedoraResource {
      * Get the RDF properties of this Resource.
     **/
     public Iterator<Triple> getProperties() throws FedoraException;
+    
+    /**
+     * Return all the values of a property
+     *
+     * @param property
+     *            The Property to get values for
+     * @return Collection of values
+     */
+    public Collection<String> getPropertyValues(Property property);
 
     /**
      * Get the size of this Resource in bytes.

@@ -50,6 +50,13 @@ public interface FedoraRepository {
      * @param path The Object path.
     **/
     public FedoraObject getObject( String path ) throws FedoraException;
+    
+    /**
+     * Get an existing Object.
+     * @param path The Object path.
+     * @param includeChilds A boolean switch to enable the loading of triples of child nodes.
+    **/
+    public FedoraObject getObject( String path, boolean includeChilds ) throws FedoraException;
 
     /**
      * Create a new Datastream.
