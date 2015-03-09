@@ -15,51 +15,45 @@
  */
 package org.fcrepo.client.impl;
 
+import static com.hp.hpl.jena.rdf.model.ResourceFactory.createProperty;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.apache.http.HttpStatus.SC_FORBIDDEN;
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_NOT_FOUND;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
-
-import static com.hp.hpl.jena.rdf.model.ResourceFactory.createProperty;
-
 import static org.fcrepo.kernel.RdfLexicon.DESCRIBES;
-import static org.fcrepo.kernel.RdfLexicon.HAS_ORIGINAL_NAME;
 import static org.fcrepo.kernel.RdfLexicon.HAS_MIME_TYPE;
+import static org.fcrepo.kernel.RdfLexicon.HAS_ORIGINAL_NAME;
 import static org.fcrepo.kernel.RdfLexicon.HAS_SIZE;
 import static org.fcrepo.kernel.RdfLexicon.REPOSITORY_NAMESPACE;
-
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import org.fcrepo.client.ForbiddenException;
-import org.fcrepo.client.NotFoundException;
-
-import com.hp.hpl.jena.graph.Node;
-import com.hp.hpl.jena.graph.NodeFactory;
-import com.hp.hpl.jena.graph.Graph;
-import com.hp.hpl.jena.graph.Triple;
-import com.hp.hpl.jena.rdf.model.Property;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
-
 import org.apache.jena.atlas.lib.NotImplemented;
-
 import org.fcrepo.client.FedoraContent;
 import org.fcrepo.client.FedoraDatastream;
 import org.fcrepo.client.FedoraException;
 import org.fcrepo.client.FedoraObject;
 import org.fcrepo.client.FedoraRepository;
+import org.fcrepo.client.ForbiddenException;
+import org.fcrepo.client.NotFoundException;
+import org.fcrepo.client.utils.FedoraDatastreamInputStream;
 import org.fcrepo.client.utils.HttpHelper;
-
 import org.slf4j.Logger;
+
+import com.hp.hpl.jena.graph.Graph;
+import com.hp.hpl.jena.graph.Node;
+import com.hp.hpl.jena.graph.NodeFactory;
+import com.hp.hpl.jena.graph.Triple;
+import com.hp.hpl.jena.rdf.model.Property;
 
 /**
  * A Fedora Datastream Impl.
@@ -205,7 +199,7 @@ public class FedoraDatastreamImpl extends FedoraResourceImpl implements FedoraDa
             final StatusLine status = response.getStatusLine();
 
             if ( status.getStatusCode() == SC_OK) {
-                return response.getEntity().getContent();
+                return new FedoraDatastreamInputStream(get, response.getEntity().getContent());
             } else if ( status.getStatusCode() == SC_FORBIDDEN) {
                 LOGGER.error("request for resource {} is not authorized.", uri);
                 throw new ForbiddenException("request for resource " + uri + " is not authorized.");
@@ -220,9 +214,8 @@ public class FedoraDatastreamImpl extends FedoraResourceImpl implements FedoraDa
             }
         } catch (final Exception e) {
             LOGGER.error("could not encode URI parameter", e);
-            throw new FedoraException(e);
-        } finally {
             get.releaseConnection();
+            throw new FedoraException(e);
         }
     }
 
