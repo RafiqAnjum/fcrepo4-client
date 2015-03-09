@@ -15,20 +15,17 @@
  */
 package org.fcrepo.client.impl;
 
+import static org.apache.http.HttpStatus.SC_CONFLICT;
+import static org.apache.http.HttpStatus.SC_CREATED;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.apache.http.HttpStatus.SC_FORBIDDEN;
+import static org.apache.http.HttpStatus.SC_NOT_FOUND;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
-
-import org.fcrepo.client.ForbiddenException;
-import org.fcrepo.client.NotFoundException;
-
-import static org.apache.http.HttpStatus.SC_CONFLICT;
-import static org.apache.http.HttpStatus.SC_CREATED;
-import static org.apache.http.HttpStatus.SC_FORBIDDEN;
-import static org.apache.http.HttpStatus.SC_NOT_FOUND;
-import static org.apache.http.HttpStatus.SC_OK;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
@@ -40,6 +37,8 @@ import org.fcrepo.client.FedoraDatastream;
 import org.fcrepo.client.FedoraException;
 import org.fcrepo.client.FedoraObject;
 import org.fcrepo.client.FedoraRepository;
+import org.fcrepo.client.ForbiddenException;
+import org.fcrepo.client.NotFoundException;
 import org.fcrepo.client.ReadOnlyException;
 import org.fcrepo.client.utils.HttpHelper;
 import org.slf4j.Logger;
@@ -147,7 +146,7 @@ public class FedoraRepositoryImpl implements FedoraRepository {
             final StatusLine status = response.getStatusLine();
             final int statusCode = status.getStatusCode();
 
-            if (statusCode == SC_CREATED) {
+            if (statusCode == SC_CREATED || statusCode == SC_NO_CONTENT) {
                 return getDatastream(path);
             } else if (statusCode == SC_FORBIDDEN) {
                 LOGGER.error("request to create resource {} is not authorized.", uri);
